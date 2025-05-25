@@ -1,6 +1,8 @@
-import { useState } from 'react';
+'use client';
 
-const HomePage = () => {
+import { FC, useState } from 'react';
+
+const HomePage: FC = () => {
   const [theme, setTheme] = useState('light');
   return (
     <div>

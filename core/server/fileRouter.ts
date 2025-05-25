@@ -1,6 +1,8 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { rootDir } from '.';
+import { readFileSync } from 'fs';
+import { createRoot } from 'react-dom/client';
 
 const getAppFile = async (): Promise<React.ReactNode> => {
   const appFilePath = rootDir + '/src/pages/_app.tsx';
@@ -24,6 +26,26 @@ const getDocumentFile = async (): Promise<React.ReactNode> => {
   }
 };
 
+export const getComponentType = (filePath: string): 'client' | 'server' => {
+  try {
+    const code = readFileSync(filePath, 'utf-8');
+    if (
+      code.trimStart().startsWith('"use client"') ||
+      code.trimStart().startsWith("'use client'")
+    ) {
+      return 'client';
+    }
+
+    if (
+      code.trimStart().startsWith('"use server"') ||
+      code.trimStart().startsWith("'use server'")
+    ) {
+      return 'server';
+    }
+  } catch {}
+  return 'server';
+};
+
 const handleFileRoutes = async (url: URL): Promise<Response | null> => {
   const routePath = url.pathname === '/' ? '/index' : url.pathname;
   const modulePath = `${rootDir}/src/pages${routePath}.tsx`;
@@ -31,8 +53,16 @@ const handleFileRoutes = async (url: URL): Promise<Response | null> => {
   try {
     const module = await import(modulePath);
     const component = module.default;
+
+    const componentType = getComponentType(modulePath);
+    let html = component();
+
     if (module && component) {
-      const html = component();
+      if (componentType === 'client') {
+        html = createRoot(document.createElement('div')).render(
+          React.createElement(component)
+        );
+      }
       const App: any = await getAppFile();
       const Document: any = await getDocumentFile();
 
